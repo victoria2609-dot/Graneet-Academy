@@ -529,13 +529,17 @@ export default function DiscPage() {
     let barsHtml = '';
     ['D', 'I', 'S', 'C'].forEach(p => {
       const pct = (s.scores[p] / 20) * 100;
-      barsHtml += `<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="width:24px;font-weight:700;font-size:14px;color:${PROFILES[p].color}">${PROFILES[p].emoji} ${p}</span><div style="flex:1;height:14px;background:#EEE;border-radius:7px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${PROFILES[p].color};border-radius:7px;transition:width 0.8s ease"></div></div><span style="font-size:13px;font-weight:600;width:40px;text-align:right">${s.scores[p]}/20</span></div>`;
+      barsHtml += '<div style="display:flex;align-items:center;gap:8px;margin:6px 0">' +
+        '<span style="width:24px;font-weight:700;font-size:14px;color:' + PROFILES[p].color + '">' + PROFILES[p].emoji + ' ' + p + '</span>' +
+        '<div style="flex:1;height:14px;background:#EEE;border-radius:7px;overflow:hidden">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + PROFILES[p].color + ';border-radius:7px;transition:width 0.8s ease"></div></div>' +
+        '<span style="font-size:13px;font-weight:600;width:40px;text-align:right">' + s.scores[p] + '/20</span></div>';
     });
-    const resultHtml = `🎉 <strong>Ton profil DISC est révélé !</strong>\n\n` +
-      `<div style="background:white;border-radius:12px;padding:16px;margin-top:10px;border:1px solid ${COLORS.graneetCreamDark}">` +
-      `<strong>Profil dominant :</strong> ${dp.emoji} ${dp.name} (${s.scores[s.dominant]}/20)<br/>` +
-      `<strong>Profil secondaire :</strong> ${sp.emoji} ${sp.name} (${s.scores[s.secondary]}/20)<br/><br/>` +
-      `${barsHtml}</div>`;
+    const resultHtml = '\u{1F389} ' + '<strong>Ton profil DISC est r\u00e9v\u00e9l\u00e9 !</strong>\n\n' +
+      '<div style="background:white;border-radius:12px;padding:16px;margin-top:10px;border:1px solid ' + COLORS.graneetCreamDark + '">' +
+      '<strong>Profil dominant :</strong> ' + dp.emoji + ' ' + dp.name + ' (' + s.scores[s.dominant] + '/20)' + '<br/>' +
+      '<strong>Profil secondaire :</strong> ' + sp.emoji + ' ' + sp.name + ' (' + s.scores[s.secondary] + '/20)' + '<br/><br/>' +
+      barsHtml + '</div>';
     await botSay(resultHtml, 800, true);
     await botSay(RESULT_TEXTS[s.dominant], 1000);
     await startAdaptation();
