@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AcademyHeader from '../components/AcademyHeader';
 import { MODULE_LIST } from '../lib/brand';
 
-const MODULE_ICONS: Record<string, JSX.Element> = {
+const MODULE_ICONS: Record<string, React.ReactNode> = {
   calendar: (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
       <rect x="4" y="6" width="24" height="22" rx="3" stroke="currentColor" strokeWidth="2"/>
