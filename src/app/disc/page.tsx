@@ -365,13 +365,15 @@ export default function DiscPage() {
   }, [messages, isTyping, choices]);
 
   // --- Helpers ---
-  const addMsg = useCallback((text: string, sender: 'bot' | 'user', isHtml = false) => {
+  /* ---- helpers (plain functions, no useCallback) ---- */
+
+  function addMsg(text: string, sender: 'bot' | 'user', isHtml = false) {
     const id = ++msgIdRef.current;
     setMessages(prev => [...prev, { id, sender, text, isHtml }]);
     return id;
-  }, []);
+  }
 
-  const updateProgress = useCallback((step: string) => {
+  function updateProgress(step: string) {
     const info = STEPS_PROGRESS[step];
     if (!info) return;
     let pct = info[0];
@@ -384,9 +386,9 @@ export default function DiscPage() {
     }
     setProgressPct(pct);
     setProgressLabel(info[1]);
-  }, []);
+  }
 
-  const botSay = useCallback((text: string, delay = 600, isHtml = false): Promise<void> => {
+  function botSay(text: string, delay = 600, isHtml = false): Promise<void> {
     return new Promise(resolve => {
       setIsTyping(true);
       setTimeout(() => {
@@ -395,348 +397,236 @@ export default function DiscPage() {
         resolve();
       }, delay);
     });
-  }, [addMsg]);
+  }
 
-  const enableInput = useCallback((placeholder = 'Tape ta r\u00e9ponse ici...') => {
+  function enableInput(placeholder = 'Tape ta réponse ici...') {
     setInputDisabled(false);
     setInputPlaceholder(placeholder);
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, []);
+  }
 
-  const disableInput = useCallback(() => {
+  function disableInput() {
     setInputDisabled(true);
-  }, []);
+  }
 
-  const showChoices = useCallback((opts: ChoiceOption[], callback: (value: string) => void) => {
+  function showChoicesFn(opts: ChoiceOption[], callback: (value: string) => void) {
     setChoices(opts);
     setChoiceCallback(() => callback);
-  }, []);
+  }
 
-  const clearChoices = useCallback(() => {
+  function clearChoices() {
     setChoices([]);
     setChoiceCallback(null);
-  }, []);
+  }
 
-  // --- Flow logic ---
-  const handleScenarioResponse = useCallback(async (userText: string) => {
+  /* ---- flow logic (plain async functions — no useCallback) ---- */
+
+  async function handleScenarioResponse(userText: string) {
     const s = stateRef.current;
     addMsg(userText, 'user');
     await botSay(SCENARIO_FEEDBACK[s.dominant!], 800);
-    // Start quiz
     s.step = 'quiz_intro';
     updateProgress('quiz_intro');
     s.quizQuestion = 0;
     s.quizScore = 0;
-    await botSay("Derni\u00e8re \u00e9tape ! 5 questions pour valider tes acquis. R\u00e9ponds par la lettre correspondante. \u{1F4AA}", 600);
-    // Ask first quiz question
+    await botSay("Dernière étape ! 5 questions pour valider tes acquis. Réponds par la lettre correspondante. 💪", 600);
     await askQuizQuestionFlow(s);
-  }, [addMsg, botSay, updateProgress]);
+  }
 
-  const showClosingFlow = useCallback(async () => {
+  async function showClosingFlow() {
     const s = stateRef.current;
     s.step = 'closing';
     updateProgress('closing');
-
-    let scoreMsg: string;
-    if (s.quizScore >= 4) {
-      scoreMsg = `\u{1F389} Excellent ! ${s.quizScore}/5 - Tu as parfaitement assimil\u00e9 les fondamentaux du DISC !`;
-    } else {
-      scoreMsg = `Bon travail ! ${s.quizScore}/5 - N'h\u00e9site pas \u00e0 relire les modules qui t'ont pos\u00e9 probl\u00e8me.`;
-    }
+    const scoreMsg = s.quizScore >= 4
+      ? `🎉 Excellent ! ${s.quizScore}/5 - Tu as parfaitement assimilé les fondamentaux du DISC !`
+      : `Bon travail ! ${s.quizScore}/5 - N'hésite pas à relire les modules qui t'ont posé problème.`;
     await botSay(scoreMsg, 600);
-
     const dp = PROFILES[s.dominant!];
     const sp = PROFILES[s.secondary!];
-
-    await botSay(`\u{1F393} Formation DISC Graneet termin\u00e9e !
-
-Ton profil : ${dp.emoji} ${dp.name} + ${sp.emoji} ${sp.name}
-
-Ton conseil cl\u00e9 : ${ADVICE_MAP[s.dominant!]}
-
-Des questions ? Contacte Victoria Bertrel - RH Graneet
-\u{1F4E7} victoria.bertrel@graneet.fr
-
-Derni\u00e8re \u00e9tape \u{1F447} Valide ta formation en remplissant le formulaire qui s'affiche !`, 1000);
-
+    await botSay(`🎓 Formation DISC Graneet terminée !\n\nTon profil : ${dp.emoji} ${dp.name} + ${sp.emoji} ${sp.name}\n\nTon conseil clé : ${ADVICE_MAP[s.dominant!]}\n\nDes questions ? Contacte Victoria Bertrel - RH Graneet\n📧 victoria.bertrel@graneet.fr\n\nDernière étape 👇 Valide ta formation en remplissant le formulaire qui s'affiche !`, 1000);
     disableInput();
-    setInputPlaceholder('Formation termin\u00e9e ! Merci \u{1F389}');
-
-    // Pre-fill validation form
+    setInputPlaceholder('Formation terminée ! Merci 🎉');
     setVfDominant(s.dominant);
     setVfSecondary(s.secondary);
     setVfLevel(s.mode === 'refresh' ? 'deja_forme' : 'premiere_fois');
-
     setTimeout(() => setShowPanel(true), 1500);
-  }, [botSay, updateProgress, disableInput]);
+  }
 
-  const handleQuizAnswerFlow = useCallback(async (answer: string, s: GameState) => {
+  async function handleQuizAnswerFlow(answer: string, s: GameState) {
     const q = QUIZ_QUESTIONS[s.quizQuestion];
     const userAnswer = answer.toUpperCase().trim();
     addMsg(userAnswer, 'user');
-
     const isCorrect = userAnswer === q.answer || userAnswer.charAt(0) === q.answer;
-
     if (isCorrect) {
       s.quizScore++;
-      await botSay(`\u2705 Correct ! ${q.explanation}`, 500);
+      await botSay(`✅ Correct ! ${q.explanation}`, 500);
     } else {
-      await botSay(`\u274C Pas tout \u00e0 fait. La bonne r\u00e9ponse \u00e9tait : ${q.answer}\n\n${q.explanation}`, 500);
+      await botSay(`❌ Pas tout à fait. La bonne réponse était : ${q.answer}\n\n${q.explanation}`, 500);
     }
-
     s.quizQuestion++;
-
     if (s.quizQuestion < 5) {
       await askQuizQuestionFlow(s);
     } else {
       await showClosingFlow();
     }
-  }, [addMsg, botSay, showClosingFlow]);
+  }
 
-  const askQuizQuestionFlow = useCallback(async (s: GameState) => {
+  async function askQuizQuestionFlow(s: GameState) {
     s.step = 'quiz_q';
     updateProgress('quiz_q');
     const qNum = s.quizQuestion + 1;
     const q = QUIZ_QUESTIONS[s.quizQuestion];
-
     await botSay(`Question ${qNum}/5 :\n\n${q.q}`, 500);
-
     if (s.quizQuestion === 4) {
-      showChoices([
+      showChoicesFn([
         { label: 'Vrai', value: 'VRAI' },
         { label: 'Faux', value: 'FAUX' }
-      ], (val) => {
-        clearChoices();
-        handleQuizAnswerFlow(val, s);
-      });
+      ], (val) => { clearChoices(); handleQuizAnswerFlow(val, s); });
       enableInput("Vrai ou Faux ?");
     } else {
-      showChoices([
-        { label: 'A', value: 'A' },
-        { label: 'B', value: 'B' },
-        { label: 'C', value: 'C' },
-        { label: 'D', value: 'D' }
-      ], (val) => {
-        clearChoices();
-        handleQuizAnswerFlow(val, s);
-      });
+      showChoicesFn([
+        { label: 'A', value: 'A' }, { label: 'B', value: 'B' },
+        { label: 'C', value: 'C' }, { label: 'D', value: 'D' }
+      ], (val) => { clearChoices(); handleQuizAnswerFlow(val, s); });
       enableInput("Ou tape A, B, C ou D...");
     }
-  }, [updateProgress, botSay, showChoices, clearChoices, enableInput, handleQuizAnswerFlow]);
+  }
 
-  const startAdaptation = useCallback(async () => {
+  async function startAdaptation() {
     const s = stateRef.current;
     s.step = 'adapt';
     updateProgress('adapt');
-
-    let tipsText = `Maintenant que tu connais ton profil, voyons comment tu peux adapter ta communication avec les autres profils. \u{1F91D}
-
-Voici 3 conseils cl\u00e9s pour chacun des autres profils :`;
-
+    let tipsText = `Maintenant que tu connais ton profil, voyons comment tu peux adapter ta communication avec les autres profils. 🤝\n\nVoici 3 conseils clés pour chacun des autres profils :`;
     const tips = ADAPT_TIPS[s.dominant!];
-    const otherProfiles = ['D', 'I', 'S', 'C'].filter(p => p !== s.dominant);
-
-    otherProfiles.forEach(p => {
+    ['D', 'I', 'S', 'C'].filter(p => p !== s.dominant).forEach(p => {
       const prof = PROFILES[p];
       tipsText += `\n\n${prof.emoji} Avec un profil ${prof.name} :`;
-      tips[p].forEach((tip, i) => {
-        tipsText += `\n${i + 1}. ${tip}`;
-      });
+      tips[p].forEach((tip, i) => { tipsText += `\n${i + 1}. ${tip}`; });
     });
-
     await botSay(tipsText, 1000);
-
     s.step = 'adapt_scenario';
     updateProgress('adapt_scenario');
     await botSay(`Pour finir cette partie, un cas concret chez Graneet. Imagine cette situation :\n\n${SCENARIOS[s.dominant!]}`, 800);
-
     s.step = 'adapt_scenario_wait';
-    enableInput("Partage ta r\u00e9flexion...");
-  }, [updateProgress, botSay, enableInput]);
+    enableInput("Partage ta réflexion...");
+  }
 
-  const calculateResults = useCallback(async () => {
+  async function calculateResults() {
     const s = stateRef.current;
     s.step = 'test_calc';
     updateProgress('test_calc');
-    await botSay("Derni\u00e8re r\u00e9ponse re\u00e7ue ! Je calcule ton profil... \u{1F504}", 1200);
-
+    await botSay("Dernière réponse reçue ! Je calcule ton profil... 🔄", 1200);
     s.scores = { D: 0, I: 0, S: 0, C: 0 };
     const mapping: Record<string, string> = { A: 'D', B: 'I', C: 'S', D: 'C' };
-    s.answers.forEach(a => {
-      s.scores[mapping[a]]++;
-    });
-
+    s.answers.forEach(a => { s.scores[mapping[a]]++; });
     const sorted = Object.entries(s.scores).sort((a, b) => b[1] - a[1]);
     s.dominant = sorted[0][0];
     s.secondary = sorted[1][0];
-
     s.step = 'result';
     updateProgress('result');
-
     const dp = PROFILES[s.dominant];
     const sp = PROFILES[s.secondary];
-
     let barsHtml = '';
     ['D', 'I', 'S', 'C'].forEach(p => {
       const pct = (s.scores[p] / 20) * 100;
-      barsHtml += `<div style="display:flex;align-items:center;gap:8px;margin:6px 0">
-        <span style="width:24px;font-weight:700;font-size:14px;color:${PROFILES[p].color}">${PROFILES[p].emoji} ${p}</span>
-        <div style="flex:1;height:14px;background:#EEE;border-radius:7px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${PROFILES[p].color};border-radius:7px;transition:width 0.8s ease"></div></div>
-        <span style="font-size:13px;font-weight:600;width:40px;text-align:right">${s.scores[p]}/20</span>
-      </div>`;
+      barsHtml += `<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="width:24px;font-weight:700;font-size:14px;color:${PROFILES[p].color}">${PROFILES[p].emoji} ${p}</span><div style="flex:1;height:14px;background:#EEE;border-radius:7px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${PROFILES[p].color};border-radius:7px;transition:width 0.8s ease"></div></div><span style="font-size:13px;font-weight:600;width:40px;text-align:right">${s.scores[p]}/20</span></div>`;
     });
-
-    const resultHtml = `\u{1F389} <strong>Ton profil DISC est r\u00e9v\u00e9l\u00e9 !</strong>\n\n` +
+    const resultHtml = `🎉 <strong>Ton profil DISC est révélé !</strong>\n\n` +
       `<div style="background:white;border-radius:12px;padding:16px;margin-top:10px;border:1px solid ${COLORS.graneetCreamDark}">` +
       `<strong>Profil dominant :</strong> ${dp.emoji} ${dp.name} (${s.scores[s.dominant]}/20)<br/>` +
       `<strong>Profil secondaire :</strong> ${sp.emoji} ${sp.name} (${s.scores[s.secondary]}/20)<br/><br/>` +
       `${barsHtml}</div>`;
-
     await botSay(resultHtml, 800, true);
     await botSay(RESULT_TEXTS[s.dominant], 1000);
     await startAdaptation();
-  }, [updateProgress, botSay, startAdaptation]);
+  }
 
-  const handleTestAnswer = useCallback(async (answer: string) => {
+  async function handleTestAnswer(answer: string) {
     const s = stateRef.current;
     const letter = answer.toUpperCase().trim().charAt(0);
     if (!['A', 'B', 'C', 'D'].includes(letter)) {
-      await botSay("Merci de r\u00e9pondre par A, B, C ou D \u{1F60A}", 300);
+      await botSay("Merci de répondre par A, B, C ou D 😊", 300);
       return;
     }
-
     addMsg(letter, 'user');
     s.answers.push(letter);
     s.testQuestion++;
-
     if (s.testQuestion < 20) {
       await askTestQuestionFlow(s);
     } else {
       await calculateResults();
     }
-  }, [addMsg, botSay, calculateResults]);
+  }
 
-  const askTestQuestionFlow = useCallback(async (s: GameState) => {
+  async function askTestQuestionFlow(s: GameState) {
     s.step = 'test_q';
     updateProgress('test_q');
     const qNum = s.testQuestion + 1;
     await botSay(`Question ${qNum}/20 :\n\n${TEST_QUESTIONS[s.testQuestion]}`, 500);
-
-    showChoices([
-      { label: 'A', value: 'A' },
-      { label: 'B', value: 'B' },
-      { label: 'C', value: 'C' },
-      { label: 'D', value: 'D' }
-    ], (val) => {
-      clearChoices();
-      handleTestAnswer(val);
-    });
+    showChoicesFn([
+      { label: 'A', value: 'A' }, { label: 'B', value: 'B' },
+      { label: 'C', value: 'C' }, { label: 'D', value: 'D' }
+    ], (val) => { clearChoices(); handleTestAnswer(val); });
     enableInput("Ou tape A, B, C ou D...");
-  }, [updateProgress, botSay, showChoices, clearChoices, handleTestAnswer, enableInput]);
+  }
 
-  const startTest = useCallback(async () => {
+  async function startTest() {
     const s = stateRef.current;
     s.step = 'test_intro';
     updateProgress('test_intro');
     s.testQuestion = 0;
     s.answers = [];
-
-    await botSay(`C'est parti pour ton test de profil ! \u{1F9EA}
-
-20 questions, une r\u00e9ponse \u00e0 la fois.
-R\u00e9ponds instinctivement, sans trop r\u00e9fl\u00e9chir.
-Il n'y a pas de bonne ou mauvaise r\u00e9ponse.
-
-R\u00e9ponds simplement avec la lettre : A, B, C ou D.`, 800);
-
+    await botSay(`C'est parti pour ton test de profil ! 🧪\n\n20 questions, une réponse à la fois.\nRéponds instinctivement, sans trop réfléchir.\nIl n'y a pas de bonne ou mauvaise réponse.\n\nRéponds simplement avec la lettre : A, B, C ou D.`, 800);
     await askTestQuestionFlow(s);
-  }, [updateProgress, botSay, askTestQuestionFlow]);
+  }
 
-  const showProfileFlow = useCallback(async (index: number) => {
+  async function showProfileFlow(index: number) {
     const s = stateRef.current;
     await botSay(DISCOVERY_PROFILES[index], 800);
-
     if (index < 3) {
       s.profileIndex = index + 1;
       s.step = 'discovery_profiles_next';
-      enableInput('Tape "suivant" pour d\u00e9couvrir le profil suivant...');
+      enableInput('Tape "suivant" pour découvrir le profil suivant...');
     } else {
-      await botSay(`\u{1F4A1} Rappel important : on a tous les 4 couleurs en nous, dans des proportions diff\u00e9rentes. Tu as un profil dominant et un profil secondaire.
-
-C'est ce qu'on va d\u00e9couvrir maintenant !
-
-Pr\u00eat(e) pour ton test de profil ? \u{1F9EA}`, 800);
+      await botSay(`💡 Rappel important : on a tous les 4 couleurs en nous, dans des proportions différentes. Tu as un profil dominant et un profil secondaire.\n\nC'est ce qu'on va découvrir maintenant !\n\nPrêt(e) pour ton test de profil ? 🧪`, 800);
       s.step = 'discovery_ready_test';
       updateProgress('discovery_ready_test');
-      enableInput('Tape "oui" ou "pr\u00eat" pour lancer le test...');
+      enableInput('Tape "oui" ou "prêt" pour lancer le test...');
     }
-  }, [botSay, enableInput, updateProgress]);
+  }
 
-  const startDiscovery = useCallback(async () => {
+  async function startDiscovery() {
     const s = stateRef.current;
     s.step = 'discovery_block1';
     updateProgress('discovery_block1');
     s.discoveryBlock = 1;
-
-    await botSay(`Le DISC est un mod\u00e8le cr\u00e9\u00e9 dans les ann\u00e9es 1920 par le psychologue William Marston.
-
-Son id\u00e9e : nous ne r\u00e9agissons pas tous pareil face aux m\u00eames situations.
-
-Le DISC ne te juge pas. Il ne mesure pas ton intelligence. Il observe tes comportements naturels pour t'aider \u00e0 mieux te comprendre et mieux comprendre les autres.
-
-\u26a0\ufe0f Important : il n'y a pas de bon ou mauvais profil. Chaque profil a ses forces et ses zones de vigilance.
-
-Tu es pr\u00eat(e) pour d\u00e9couvrir les 4 profils ? \u{1F447}`, 1000);
-
+    await botSay(`Le DISC est un modèle créé dans les années 1920 par le psychologue William Marston.\n\nSon idée : nous ne réagissons pas tous pareil face aux mêmes situations.\n\nLe DISC ne te juge pas. Il ne mesure pas ton intelligence. Il observe tes comportements naturels pour t'aider à mieux te comprendre et mieux comprendre les autres.\n\n⚠️ Important : il n'y a pas de bon ou mauvais profil. Chaque profil a ses forces et ses zones de vigilance.\n\nTu es prêt(e) pour découvrir les 4 profils ? 👇`, 1000);
     enableInput('Tape "ok" ou "suivant" pour continuer...');
     s.step = 'discovery_wait_block1';
-  }, [updateProgress, botSay, enableInput]);
+  }
 
-  const handleRefreshQuiz = useCallback(async () => {
+  async function handleRefreshQuiz() {
     const s = stateRef.current;
     s.step = 'refresh_correction';
     updateProgress('refresh_correction');
-    await botSay(`Voici les bonnes r\u00e9ponses :
-
-1. Le profil qui fuit le conflit \u2192 \u{1F7E2} S - Stable
-2. Rapide ET orient\u00e9 relations \u2192 \u{1F7E1} I - Influent
-3. V\u00e9rifie chaque d\u00e9tail \u2192 \u{1F535} C - Consciencieux
-
-Bien jou\u00e9 ! On passe maintenant au test de profil.`, 800);
-
+    await botSay(`Voici les bonnes réponses :\n\n1. Le profil qui fuit le conflit → 🟢 S - Stable\n2. Rapide ET orienté relations → 🟡 I - Influent\n3. Vérifie chaque détail → 🔵 C - Consciencieux\n\nBien joué ! On passe maintenant au test de profil.`, 800);
     await startTest();
-  }, [updateProgress, botSay, startTest]);
+  }
 
-  const startRefresh = useCallback(async () => {
+  async function startRefresh() {
     const s = stateRef.current;
     s.step = 'refresh_intro';
     updateProgress('refresh_intro');
-    await botSay(`Super, tu connais d\u00e9j\u00e0 le DISC ! On va aller plus vite sur la th\u00e9orie.
-
-Petit rappel express :
-
-\u{1F534} D - Dominant \u2192 Action, r\u00e9sultats, direct
-\u{1F7E1} I - Influent \u2192 Enthousiasme, communication, cr\u00e9ativit\u00e9
-\u{1F7E2} S - Stable \u2192 Harmonie, fiabilit\u00e9, \u00e9coute
-\u{1F535} C - Consciencieux \u2192 Pr\u00e9cision, rigueur, analyse
-
-3 questions flash pour tester ta m\u00e9moire :
-
-1. Quel profil a tendance \u00e0 fuir le conflit ?
-2. Quel profil est \u00e0 la fois rapide ET orient\u00e9 relations ?
-3. Quel profil v\u00e9rifie chaque d\u00e9tail avant d'avancer ?
-
-(R\u00e9ponds avec les lettres, par exemple : S, I, C)`, 1000);
-
+    await botSay(`Super, tu connais déjà le DISC ! On va aller plus vite sur la théorie.\n\nPetit rappel express :\n\n🔴 D - Dominant → Action, résultats, direct\n🟡 I - Influent → Enthousiasme, communication, créativité\n🟢 S - Stable → Harmonie, fiabilité, écoute\n🔵 C - Consciencieux → Précision, rigueur, analyse\n\n3 questions flash pour tester ta mémoire :\n\n1. Quel profil a tendance à fuir le conflit ?\n2. Quel profil est à la fois rapide ET orienté relations ?\n3. Quel profil vérifie chaque détail avant d'avancer ?\n\n(Réponds avec les lettres, par exemple : S, I, C)`, 1000);
     s.step = 'refresh_quiz';
     updateProgress('refresh_quiz');
-    enableInput("Tes 3 r\u00e9ponses (ex: S, I, C)...");
-  }, [updateProgress, botSay, enableInput]);
+    enableInput("Tes 3 réponses (ex: S, I, C)...");
+  }
 
-  const handleLevelCheck = useCallback(async (answer: string) => {
+  async function handleLevelCheck(answer: string) {
     const s = stateRef.current;
     clearChoices();
-    addMsg(answer === 'A' ? 'A. Oui, je connais d\u00e9j\u00e0 le DISC' : 'B. Non, c\'est la premi\u00e8re fois', 'user');
+    addMsg(answer === 'A' ? 'A. Oui, je connais déjà le DISC' : 'B. Non, c\'est la première fois', 'user');
     if (answer === 'A') {
       s.mode = 'refresh';
       await startRefresh();
@@ -744,137 +634,87 @@ Petit rappel express :
       s.mode = 'discover';
       await startDiscovery();
     }
-  }, [addMsg, clearChoices, startRefresh, startDiscovery]);
+  }
 
   // --- Start welcome on mount ---
   const startedRef = useRef(false);
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-
     const startWelcome = async () => {
       const s = stateRef.current;
       s.step = 'welcome';
       updateProgress('welcome');
-
-      await botSay(`Bienvenue dans la formation DISC de Graneet ! \u{1F3AF}
-
-Je suis ton formateur DISC pour cette session. En 30 mn environ, tu vas :
-
-\u2705 Comprendre les 4 profils DISC
-\u2705 D\u00e9couvrir ton propre profil
-\u2705 Apprendre \u00e0 mieux communiquer avec ton \u00e9quipe
-
-Avant de d\u00e9marrer, une question : as-tu d\u00e9j\u00e0 entendu parler du mod\u00e8le DISC ou suivi une formation sur ce sujet ?`, 800);
-
+      await botSay(`Bienvenue dans la formation DISC de Graneet ! 🎯\n\nJe suis ton formateur DISC pour cette session. En 30 mn environ, tu vas :\n\n✅ Comprendre les 4 profils DISC\n✅ Découvrir ton propre profil\n✅ Apprendre à mieux communiquer avec ton équipe\n\nAvant de démarrer, une question : as-tu déjà entendu parler du modèle DISC ou suivi une formation sur ce sujet ?`, 800);
       s.step = 'level_check';
       updateProgress('level_check');
-      showChoices([
-        { label: 'A. Oui, je connais d\u00e9j\u00e0 le DISC', value: 'A' },
-        { label: 'B. Non, c\'est la premi\u00e8re fois', value: 'B' }
+      showChoicesFn([
+        { label: 'A. Oui, je connais déjà le DISC', value: 'A' },
+        { label: 'B. Non, c\'est la première fois', value: 'B' }
       ], handleLevelCheck);
       enableInput();
     };
-
     startWelcome();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- Handle user text input ---
-  const handleUserInput = useCallback(() => {
+  function handleUserInput() {
     const text = inputValue.trim();
     if (!text) return;
     setInputValue('');
     const s = stateRef.current;
     const step = s.step;
-
     if (step === 'discovery_wait_block1') {
-      addMsg(text, 'user');
-      s.step = 'discovery_profiles';
-      updateProgress('discovery_profiles');
-      s.profileIndex = 0;
-      showProfileFlow(0);
+      addMsg(text, 'user'); s.step = 'discovery_profiles'; updateProgress('discovery_profiles'); s.profileIndex = 0; showProfileFlow(0);
     } else if (step === 'discovery_profiles_next') {
-      addMsg(text, 'user');
-      showProfileFlow(s.profileIndex);
+      addMsg(text, 'user'); showProfileFlow(s.profileIndex);
     } else if (step === 'discovery_ready_test') {
-      addMsg(text, 'user');
-      startTest();
+      addMsg(text, 'user'); startTest();
     } else if (step === 'refresh_quiz') {
-      addMsg(text, 'user');
-      handleRefreshQuiz();
+      addMsg(text, 'user'); handleRefreshQuiz();
     } else if (step === 'test_q') {
       const letter = text.toUpperCase().charAt(0);
-      if (['A', 'B', 'C', 'D'].includes(letter)) {
-        clearChoices();
-        handleTestAnswer(letter);
-      } else {
-        addMsg(text, 'user');
-        botSay("Merci de r\u00e9pondre par A, B, C ou D \u{1F60A}", 300);
-      }
+      if (['A', 'B', 'C', 'D'].includes(letter)) { clearChoices(); handleTestAnswer(letter); }
+      else { addMsg(text, 'user'); botSay("Merci de répondre par A, B, C ou D 😊", 300); }
     } else if (step === 'quiz_q') {
       const upper = text.toUpperCase().trim();
       if (s.quizQuestion === 4) {
-        if (upper.startsWith('V') || upper.startsWith('F')) {
-          clearChoices();
-          handleQuizAnswerFlow(upper.startsWith('V') ? 'VRAI' : 'FAUX', s);
-        } else {
-          addMsg(text, 'user');
-          botSay("R\u00e9ponds par Vrai ou Faux \u{1F60A}", 300);
-        }
+        if (upper.startsWith('V') || upper.startsWith('F')) { clearChoices(); handleQuizAnswerFlow(upper.startsWith('V') ? 'VRAI' : 'FAUX', s); }
+        else { addMsg(text, 'user'); botSay("Réponds par Vrai ou Faux 😊", 300); }
       } else {
         const letter = upper.charAt(0);
-        if (['A', 'B', 'C', 'D'].includes(letter)) {
-          clearChoices();
-          handleQuizAnswerFlow(letter, s);
-        } else {
-          addMsg(text, 'user');
-          botSay("Merci de r\u00e9pondre par A, B, C ou D \u{1F60A}", 300);
-        }
+        if (['A', 'B', 'C', 'D'].includes(letter)) { clearChoices(); handleQuizAnswerFlow(letter, s); }
+        else { addMsg(text, 'user'); botSay("Merci de répondre par A, B, C ou D 😊", 300); }
       }
     } else if (step === 'adapt_scenario_wait') {
       handleScenarioResponse(text);
     } else {
-      addMsg(text, 'user');
-      botSay("Reprenons la formation ! \u{1F60A}", 400);
+      addMsg(text, 'user'); botSay("Reprenons la formation ! 😊", 400);
     }
-  }, [inputValue, addMsg, updateProgress, showProfileFlow, startTest, handleRefreshQuiz, clearChoices, handleTestAnswer, handleQuizAnswerFlow, handleScenarioResponse, botSay]);
+  }
 
   // --- Validation form submit ---
-  const handleFormSubmit = useCallback((e: React.FormEvent) => {
+  function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errors: Record<string, boolean> = {};
     let valid = true;
-
     if (vfName.trim().length < 3) { errors.name = true; valid = false; }
     if (!vfDominant) { errors.dominant = true; valid = false; }
     if (!vfSecondary) { errors.secondary = true; valid = false; }
     if (!vfLevel) { errors.level = true; valid = false; }
     if (!vfRating) { errors.rating = true; valid = false; }
     if (vfEngagement.trim().length < 20) { errors.engagement = true; valid = false; }
-
     setVfErrors(errors);
-
     if (!valid) return;
-
-    const profileLabels: Record<string, string> = { D: '\u{1F534} Dominant', I: '\u{1F7E1} Influent', S: '\u{1F7E2} Stable', C: '\u{1F535} Consciencieux' };
+    const profileLabels: Record<string, string> = { D: '🔴 Dominant', I: '🟡 Influent', S: '🟢 Stable', C: '🔵 Consciencieux' };
     setSuccessProfile(`${profileLabels[vfDominant!]} + ${profileLabels[vfSecondary!]}`);
     setFormSubmitted(true);
-
     localStorage.setItem('graneet_disc_done', 'true');
+    console.log('DISC Form submitted:', { name: vfName.trim(), dominant: vfDominant, secondary: vfSecondary, level: vfLevel, rating: vfRating, engagement: vfEngagement.trim(), comment: vfComment.trim() });
+  }
 
-    console.log('DISC Form submitted:', {
-      name: vfName.trim(),
-      dominant: vfDominant,
-      secondary: vfSecondary,
-      level: vfLevel,
-      rating: vfRating,
-      engagement: vfEngagement.trim(),
-      comment: vfComment.trim()
-    });
-  }, [vfName, vfDominant, vfSecondary, vfLevel, vfRating, vfEngagement, vfComment]);
-
-  const starHints: Record<number, string> = { 1: '\u{1F62C} D\u00e9cevant', 2: '\u{1F610} Peut mieux faire', 3: '\u{1F642} Bien', 4: '\u{1F604} Tr\u00e8s bien !', 5: '\u{1F929} Excellent !' };
+  const starHints: Record<number, string> = { 1: '😬 Décevant', 2: '😐 Peut mieux faire', 3: '🙂 Bien', 4: '😄 Très bien !', 5: '🤩 Excellent !' };
 
   // ============================================================
   // RENDER
