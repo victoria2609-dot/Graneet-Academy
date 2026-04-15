@@ -586,14 +586,11 @@ Voici 3 conseils cl\u00e9s pour chacun des autres profils :`;
       </div>`;
     });
 
-    const resultHtml = `\u{1F389} <strong>Ton profil DISC est r\u00e9v\u00e9l\u00e9 !</strong>
-
-<div style="background:white;border-radius:12px;padding:16px;margin-top:10px;border:1px solid ${COLORS.graneetCreamDark}">
-<strong>Profil dominant :</strong> ${dp.emoji} ${dp.name} (${s.scores[s.dominant]}/20)
-<strong>Profil secondaire :</strong> ${sp.emoji} ${sp.name} (${s.scores[s.secondary]}/20)
-
-${barsHtml}
-</div>`;
+    const resultHtml = `\u{1F389} <strong>Ton profil DISC est r\u00e9v\u00e9l\u00e9 !</strong>\n\n` +
+      `<div style="background:white;border-radius:12px;padding:16px;margin-top:10px;border:1px solid ${COLORS.graneetCreamDark}">` +
+      `<strong>Profil dominant :</strong> ${dp.emoji} ${dp.name} (${s.scores[s.dominant]}/20)<br/>` +
+      `<strong>Profil secondaire :</strong> ${sp.emoji} ${sp.name} (${s.scores[s.secondary]}/20)<br/><br/>` +
+      `${barsHtml}</div>`;
 
     await botSay(resultHtml, 800, true);
     await botSay(RESULT_TEXTS[s.dominant], 1000);
