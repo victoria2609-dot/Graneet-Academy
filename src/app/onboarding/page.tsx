@@ -119,12 +119,12 @@ function TaskCard({
 }: {
   task: Task;
   status: TaskStatus;
-  onStatusChange: (taskUrl: string, next: TaskStatus) => void;
+  onStatusChange: (taskId: string, next: TaskStatus) => void;
 }) {
   const handleToggle = () => {
     const currentIdx = STATUS_CYCLE.indexOf(status);
     const next = STATUS_CYCLE[(currentIdx + 1) % STATUS_CYCLE.length];
-    onStatusChange(task.url, next);
+    onStatusChange(task.id, next);
   };
 
   const isDone = status === 'Done';
@@ -492,9 +492,9 @@ export default function OnboardingPage() {
       });
   };
 
-  const handleStatusChange = useCallback((taskUrl: string, next: TaskStatus) => {
+  const handleStatusChange = useCallback((taskId: string, next: TaskStatus) => {
     setProgress((prev) => {
-      const updated = { ...prev, [taskUrl]: next };
+      const updated = { ...prev, [taskId]: next };
       localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(updated));
       return updated;
     });
@@ -511,7 +511,7 @@ export default function OnboardingPage() {
 
   const getTaskStatus = useCallback(
     (task: Task): TaskStatus => {
-      return progress[task.url] ?? task.status ?? 'To do';
+      return progress[task.id] ?? task.status ?? 'To do';
     },
     [progress]
   );
